@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infos voyageurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Merriweather:wght@400;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#c3d9db;--band:#b4cccd;--card:#a3434f;--card-t:#fff;--btn:#7ac61e;--btn-t:#1d2b0a;--ink:#111;--mono:'Courier Prime','Courier New',monospace;--serif:'Merriweather',Georgia,serif;--disp:'Playfair Display',Georgia,serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.6}
+main{max-width:520px;margin:0 auto;padding:0 12px 48px;text-align:center}
+.band{background:var(--band);height:110px;margin:0 -12px}
+.avatar{width:58px;height:58px;border-radius:50%;object-fit:cover;margin:-30px auto 8px;display:block;background:#e8e2d8;border:2px solid #fff}
+.who{font-family:var(--mono);font-size:1rem;line-height:1.3;margin:0}
+.rule{display:flex;align-items:center;gap:10px;color:var(--ink);margin:26px 0}
+.rule::before,.rule::after{content:"";flex:1;height:1px;background:#555}
+h1{font-family:var(--disp);font-weight:900;font-size:clamp(2.6rem,13vw,3.6rem);margin:0;text-transform:uppercase;line-height:1.1}
+h2{font-family:var(--disp);font-size:1.6rem;margin:0 0 6px}
+h3{font-size:1rem;margin:0 0 8px}
+.sub{font-size:1.35rem;font-family:var(--disp);margin:34px 0 0}
+.dates{font-size:.85rem}
+.bar{height:8px;background:#fff7;border-radius:4px;margin:10px 6px 0;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--card);transition:width .8s}
+.card{background:var(--card);color:var(--card-t);padding:22px 16px;margin:14px 0;font-size:.95rem;white-space:pre-line}
+.card h3{white-space:normal}
+.btn{display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--btn);color:var(--btn-t);text-decoration:none;font-weight:700;border-radius:8px;padding:14px;margin:14px 0 0;min-height:56px}
+.btn small{font-weight:400;opacity:.65;font-size:.85rem}
+.btn:focus-visible,.nav button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nav button{border:0;background:transparent;font-size:1.6rem;cursor:pointer;padding:6px 12px;color:var(--ink)}
+.nav button:disabled{opacity:.25;cursor:default}
+.day{font-family:var(--disp);font-size:1.4rem;line-height:1.3;margin:0}
+.wx{font-size:1rem;margin:2px 0 0}
+iframe{width:100%;height:220px;border:0;margin-top:14px}
+.err{background:#fff8;padding:10px;margin-top:14px;font-size:.85rem}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="band"></div>
+  <img class="avatar" id="photo" alt="">
+  <p class="who" id="who"></p>
+  <div class="rule" aria-hidden="true">★</div>
+  <h1 id="lieu"></h1>
+  <p class="sub" id="titre"></p>
+  <p class="dates" id="dates"></p>
+  <div class="bar" role="progressbar" aria-label="Avancement du voyage" aria-valuemin="0" aria-valuemax="100"><i id="prog"></i></div>
+  <div class="rule" aria-hidden="true">★</div>
+  <h2>Bienvenue</h2>
+  <p id="bienvenue"></p>
+  <section class="card">
+    <div>Un appel direct, en un seul geste.</div>
+    <a class="btn" id="tel-chauffeur" href="#">Chauffeur<small id="nom-chauffeur"></small></a>
+    <a class="btn" id="tel-guide" href="#">Guide<small id="nom-guide"></small></a>
+  </section>
+  <div class="rule" aria-hidden="true"></div>
+  <div class="nav">
+    <button id="prev" aria-label="Jour précédent">‹</button>
+    <div><p class="day" id="jour"></p><p class="wx" id="meteo"></p></div>
+    <button id="next" aria-label="Jour suivant">›</button>
+  </div>
+  <section class="card" id="programme"></section>
+  <div id="infos"></div>
+  <iframe id="carte" title="Carte" loading="lazy" hidden></iframe>
+  <div class="err" id="err" hidden></div>
+</main>
+
+<script>
+/* ====== RÉGLAGES ====== */
+const SHEET_ID = '1AlsP2IBzjhVkeFyBqr4EkrzOebx6w3JOZkgTJhF9cYs';
+// Noms des onglets du Google Sheet
+const TABS = {config:'Config', programme:'Programme', infos:'Infos'};
+
+/* Données de secours si le Sheet est inaccessible */
+const DEMO = {
+  config:{lieu:'Hyères',titre_voyage:'Club Libournais Retraite Sportive 2026',date_debut:'2026-10-31',date_fin:'2026-11-06',
+    chauffeur_nom:'Raphaël',chauffeur_tel:'',guide_nom:'',guide_tel:'',conducteur:'Raphaël DUCATEZ',societe:'Autocars Gérardin',
+    bienvenue:'Toujours à votre disposition pour vous proposer la meilleure expérience de voyage, vous trouverez ici toutes les informations utiles.',lat:'43.12',lng:'6.13',photo:''},
+  programme:[{date:'2026-11-01',titre:'EPFIG ET STRASBOURG',contenu:'* 09h00\nBOERSCH ET ROSHEIM\n\n* 12h00 :\nRetour et déjeuner au VVF.\n\n* 13h15 :\nVisite du plan incliné d’ARZVILLER\n\n* Soir : Dîner au VVF.'}],
+  infos:[{titre:'L’hébergement',contenu:'Petit-déjeuner : 07h00 – 10h00\nDéjeuner : 12h30 – 14h00\nDîner : 19h00 – 21h00',ordre:'1'}]
+};
+
+/* ====== LECTURE DU SHEET (CSV public via gviz) ====== */
+const csvUrl = n => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(n)}`;
+function parseCSV(t){
+  const rows=[];let r=[],c='',q=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(q){ if(ch==='"'){ if(t[i+1]==='"'){c+='"';i++} else q=false } else c+=ch }
+    else if(ch==='"') q=true;
+    else if(ch===','){r.push(c);c=''}
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&t[i+1]==='\n')i++; r.push(c);rows.push(r);r=[];c='' }
+    else c+=ch }
+  if(c||r.length){r.push(c);rows.push(r)}
+  return rows;
+}
+const table = async n => { const res=await fetch(csvUrl(n)); if(!res.ok) throw new Error(n); return parseCSV(await res.text()); };
+const asObjects = rows => { const h=rows[0].map(x=>x.trim().toLowerCase()); return rows.slice(1).filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(h.map((k,i)=>[k,(r[i]||'').trim()]))); };
+
+async function load(){
+  try{
+    const [c,p,i] = await Promise.all([table(TABS.config),table(TABS.programme),table(TABS.infos)]);
+    const config = Object.fromEntries(c.filter(r=>r[0]).map(r=>[r[0].trim().toLowerCase(),(r[1]||'').trim()]));
+    return {config, programme:asObjects(p), infos:asObjects(i)};
+  }catch(e){
+    const err=document.getElementById('err');
+    err.hidden=false; err.textContent='Données en direct indisponibles : affichage de la dernière version connue.';
+    return DEMO;
+  }
+}
+
+/* ====== OUTILS ====== */
+const $ = id => document.getElementById(id);
+const iso = d => d.toLocaleDateString('sv-SE');
+const parseDay = s => new Date(s+'T12:00:00');
+function longDate(s){
+  const d=parseDay(s);
+  const j=d.getDate()===1?'1er':d.getDate();
+  const m=d.toLocaleDateString('fr-FR',{month:'long'});
+  const w=d.toLocaleDateString('fr-FR',{weekday:'long'});
+  return `${w.charAt(0).toUpperCase()+w.slice(1)} ${j} ${m} ${d.getFullYear()}`;
+}
+const shortDate = s => parseDay(s).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+const WX = c => c===0?'☀️ Dégagé':c<=2?'🌤️ Éclaircies':c===3?'☁️ Couvert':c<=48?'🌫️ Brouillard':c<=57?'🌦️ Bruine':c<=67?'🌧️ Pluie':c<=77?'🌨️ Neige':c<=82?'🌧️ Averses':'⛈️ Orage';
+
+async function weather(cfg,day){
+  $('meteo').textContent='';
+  if(!cfg.lat||!cfg.lng) return;
+  try{
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${cfg.lat}&longitude=${cfg.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${day}&end_date=${day}`;
+    const j=await (await fetch(u)).json();
+    const d=j.daily; $('meteo').textContent=`${WX(d.weathercode[0])} · ${Math.round(d.temperature_2m_min[0])}° / ${Math.round(d.temperature_2m_max[0])}°`;
+  }catch(e){}
+}
+
+/* ====== AFFICHAGE ====== */
+function render({config:cfg,programme,infos}){
+  $('lieu').textContent=cfg.lieu||'';
+  $('titre').textContent=cfg.titre_voyage||'';
+  $('bienvenue').textContent=cfg.bienvenue||'';
+  $('who').innerHTML=''; 
+  [cfg.conducteur,cfg.societe].forEach(t=>{ if(t){ $('who').append(t,document.createElement('br')) } });
+  const ph=$('photo'); if(cfg.photo){ph.src=cfg.photo}else{ph.hidden=true}
+  document.title=cfg.titre_voyage||'Infos voyageurs';
+
+  // dates + progression
+  if(cfg.date_debut&&cfg.date_fin){
+    $('dates').textContent=`Du ${shortDate(cfg.date_debut)} au ${longDate(cfg.date_fin).split(' ').slice(1).join(' ')}`;
+    const a=parseDay(cfg.date_debut),b=parseDay(cfg.date_fin),now=new Date();
+    const pct=Math.max(0,Math.min(100,(now-a)/(b-a)*100));
+    $('prog').style.width=pct+'%'; $('prog').parentElement.setAttribute('aria-valuenow',Math.round(pct));
+  }
+
+  // boutons
+  for(const [id,tel,nom] of [['chauffeur',cfg.chauffeur_tel,cfg.chauffeur_nom],['guide',cfg.guide_tel,cfg.guide_nom]]){
+    const a=$('tel-'+id); $('nom-'+id).textContent=nom||'';
+    if(tel){a.href='tel:'+tel.replace(/\s/g,'')}else{a.removeAttribute('href');a.style.opacity='.5'}
+    if(id==='guide'&&!tel&&!nom) a.hidden=true;
+  }
+
+  // jour affiché : aujourd’hui si au programme, sinon le plus proche
+  const days=programme.map(p=>p.date).sort();
+  const today=iso(new Date());
+  let idx=days.indexOf(today);
+  if(idx<0) idx=today<days[0]?0:days.length-1;
+  const show=i=>{
+    idx=i; const p=programme.filter(x=>x.date===days[i]);
+    $('jour').textContent='📅 '+longDate(days[i]);
+    const card=$('programme'); card.innerHTML='';
+    p.forEach(x=>{const h=document.createElement('h3');h.textContent=x.titre;card.append(h,x.contenu)});
+    $('prev').disabled=i===0; $('next').disabled=i===days.length-1;
+    weather(cfg,days[i]);
+  };
+  $('prev').onclick=()=>show(idx-1); $('next').onclick=()=>show(idx+1);
+  if(days.length) show(idx); else $('jour').textContent='Programme à venir';
+
+  // rubriques d’information
+  const box=$('infos');
+  infos.sort((a,b)=>(+a.ordre||99)-(+b.ordre||99)).forEach(x=>{
+    const s=document.createElement('section'); s.className='card';
+    const h=document.createElement('h3'); h.textContent=x.titre; s.append(h,x.contenu); box.append(s);
+  });
+
+  // carte
+  if(cfg.lat&&cfg.lng){
+    const la=+cfg.lat,ln=+cfg.lng,d=.01;
+    const f=$('carte'); f.hidden=false;
+    f.src=`https://www.openstreetmap.org/export/embed.html?bbox=${ln-d},${la-d},${ln+d},${la+d}&layer=mapnik&marker=${la},${ln}`;
+  }
+}
+load().then(render);
+</script>
+</body>
+</html>
